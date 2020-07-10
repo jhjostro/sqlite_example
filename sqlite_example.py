@@ -32,12 +32,57 @@ def connect_to_database(db_file: str) -> sqlite3.Connection:
 def create_table(conn: sqlite3.Connection, create_statement: str) -> None:
     """Create a new database table from string passed as create_statement."""
     try:
-        c = conn.cursor()
-        c.execute(create_statement)
+        cur = conn.cursor()
+        cur.execute(create_statement)
     except Error as err:
         print(err)
 
     return None
+
+
+def insert_timestamp(conn: sqlite3.Connection, timestamp_val: str) -> int:
+    """
+    Insert a new row in timestamps table.
+
+    Pass the timestamp value as timestamp_val, returns id of new row.
+
+    """
+    row_statement = str('INSERT INTO timestamps(timestampVal) VALUES ("'
+                        + timestamp_val + '")')
+    try:
+        cur = conn.cursor()
+        cur.execute(row_statement)
+        conn.commit()
+    except Error as err:
+        print(err)
+
+    print(type(cur.lastrowid))
+
+    return cur.lastrowid
+
+
+def insert_observation(conn: sqlite3.Connection, observation_val: str,
+                       timestamp_id: int) -> int:
+    """
+    Insert a new row in observations table, linking to a timestamp.
+
+    Pass the observation value as observation_val and the timestamp row id as
+    timestamp_id, returns id of new row in observations.
+
+    """
+    row_statement = str('INSERT INTO observations(observationVal, timestampID)'
+                        + 'VALUES ("' + observation_val + '",'
+                        + str(timestamp_id) + ')')
+    try:
+        cur = conn.cursor()
+        cur.execute(row_statement)
+        conn.commit()
+    except Error as err:
+        print(err)
+
+    print(type(cur.lastrowid))
+
+    return cur.lastrowid
 
 
 def main():
@@ -49,16 +94,25 @@ def main():
         # create two new database tables.
         new_table_timestamps = ("""CREATE TABLE IF NOT EXISTS timestamps(
             timestampID INTEGER NOT NULL PRIMARY KEY,
-            timestamp NUMERIC NOT NULL
+            timestampVal NUMERIC NOT NULL
             );""")
         new_table_observations = ("""CREATE TABLE IF NOT EXISTS observations(
             observationID INTEGER NOT NULL PRIMARY KEY,
-            observationValue REAL NOT NULL,
+            observationVal TEXT NOT NULL,
             timestampID INTEGER NOT NULL,
             FOREIGN KEY (timestampID) REFERENCES timestamps(timestampID)
             );""")
         create_table(conn, new_table_timestamps)
         create_table(conn, new_table_observations)
+
+        # insert new rows into tables.
+        timestamp = '2020-07-10 10:20:05.123'
+        # create new timestamp entry and get id of the new row.
+        timestamp_id = insert_timestamp(conn, timestamp)
+        observation = 'Test Observation #1.'
+        # create new observation entry and link to a timestamp.
+        observation_id = insert_observation(conn, observation, timestamp_id)
+
     else:  # print error if database connection fails.
         print('Error in database connection.')
 
