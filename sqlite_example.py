@@ -56,8 +56,6 @@ def insert_timestamp(conn: sqlite3.Connection, timestamp_val: str) -> int:
     except Error as err:
         print(err)
 
-    print(type(cur.lastrowid))
-
     return cur.lastrowid
 
 
@@ -80,9 +78,43 @@ def insert_observation(conn: sqlite3.Connection, observation_val: str,
     except Error as err:
         print(err)
 
-    print(type(cur.lastrowid))
-
     return cur.lastrowid
+
+
+def get_observations_by_date(conn: sqlite3.Connection, date: str) -> list:
+    """
+    Function to query the observations table by a given date.
+    
+    First querys the timestamp table to find all timestampID's related to the
+    given date, then querys the observations table based on those timestampID
+    values. Returns a list of observations.
+    """
+
+    # query timestamps table using date to get matching timestampID's.
+    timestamps_query = str('SELECT timestampID FROM timestamps WHERE'
+                           + ' DATE(timestampVal) = "' + date + '"')
+    try:
+        cur = conn.cursor()
+        cur.execute(timestamps_query)
+        results = cur.fetchall()
+        # extract the timestamp id's into a useable list for next query.
+        timestamp_list = [str(row[0]) for row in results]
+        sep = ','
+        timestamp_ids = sep.join(timestamp_list)
+    except Error as err:
+        print(err)
+
+    # query observations using selected timestampID's.
+    observations_query = str('SELECT observationVal FROM observations WHERE '
+                             + 'timestampID IN (' + str(timestamp_ids) + ')')
+    try:
+        cur = conn.cursor()
+        cur.execute(observations_query)
+        query_results = cur.fetchall()
+    except Error as err:
+        print(err)
+
+    return query_results
 
 
 def main():
@@ -106,12 +138,15 @@ def main():
         create_table(conn, new_table_observations)
 
         # insert new rows into tables.
-        timestamp = '2020-07-10 10:20:05.123'
-        # create new timestamp entry and get id of the new row.
+        timestamp = '2020-07-10 10:20:05.123'  # example timestamp value.
         timestamp_id = insert_timestamp(conn, timestamp)
-        observation = 'Test Observation #1.'
-        # create new observation entry and link to a timestamp.
-        observation_id = insert_observation(conn, observation, timestamp_id)
+        observation = 'Test Observation #1.'  # example observation value.
+        insert_observation(conn, observation, timestamp_id)
+
+        # query the table
+        date = '2020-07-10'  # example date to query the observations table.
+        results = get_observations_by_date(conn, date)
+        print(results)
 
     else:  # print error if database connection fails.
         print('Error in database connection.')
